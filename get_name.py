@@ -15,7 +15,9 @@ for item in rep.response.body['data']['content']:
     name_list.append(item['title'])
 
 # 将name_list中的内容按行存储到txt文件
-with open('name_list.txt', 'w', encoding='utf-8') as f:
+import os
+current_dir = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(current_dir, 'name_list.txt'), 'w', encoding='utf-8') as f:
     for name in name_list:
         f.write(name + '\n')
         
