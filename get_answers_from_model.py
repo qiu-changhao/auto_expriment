@@ -58,15 +58,13 @@ def build_prompt(exam_data):
     return prompt
 
 
-def call_model(prompt):
+def call_model(prompt, api_key=None):
     """
     调用大模型获取答案
     """
     try:
         client = OpenAI(
-            # 新加坡和北京地域的API Key不同。获取API Key： `https://help.aliyun.com/zh/model-studio/get-api-key`  
-            api_key=os.getenv("DASHSCOPE_API_KEY"),
-            # 以下是北京地域base_url，如果使用新加坡地域的模型，需要将base_url替换为： `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`  
+            api_key=api_key,
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
         )
         
@@ -167,23 +165,21 @@ def main():
     if not exam_data:
         return
     
-    # 直接从已有的答案文件读取答案进行测试
-    try:
-        with open('exam_answers.txt', 'r', encoding='utf-8') as f:
-            model_answer = f.read()
-        print("成功从 exam_answers.txt 读取答案")
-    except Exception as e:
-        print(f"读取答案文件失败: {e}")
-        # 如果读取失败，构建提示词并调用大模型
-        print("将尝试调用大模型获取新答案...")
-        prompt = build_prompt(exam_data)
-        model_answer = call_model(prompt)
-        if not model_answer:
-            return
-        # 保存原始答案
-        save_answers(model_answer, 'exam_answers.txt')
+    # 每次都调用大模型获取新答案，覆盖之前的答案
+    print("调用大模型获取最新答案...")
+    prompt = build_prompt(exam_data)
+    api_key = resolve_api_key()
+    if not api_key:
+        return
+    model_answer = call_model(prompt, api_key)
+    if not model_answer:
+        return
     
-    # 解析并保存JSON格式答案
+    # 保存原始答案，覆盖已有的文件
+    print("覆盖保存最新获取的答案...")
+    save_answers(model_answer, 'exam_answers.txt')
+    
+    # 解析并保存JSON格式答案，覆盖已有的文件
     answers_dict = parse_answers_to_json(model_answer, exam_data)
     save_answers_json(answers_dict, 'exam_answers.json')
     
@@ -192,16 +188,23 @@ def main():
     print(f"判断题答案数：{len(answers_dict['判断题'])}/47")
     print(f"单选题答案数：{len(answers_dict['单选题'])}/25")
     print(f"多选题答案数：{len(answers_dict['多选题'])}/1")
-    print("\n请检查答案文件是否完整。")
+    print("\n最新答案已成功覆盖保存。")
 
 
 if __name__ == "__main__":
-    # 提示用户设置环境变量
-    if not os.getenv("DASHSCOPE_API_KEY"):
-        print("警告: 未设置环境变量 DASHSCOPE_API_KEY")
-        print("请先设置API密钥：")
-        print("Windows命令行: set DASHSCOPE_API_KEY=your_api_key")
-        print("PowerShell: $env:DASHSCOPE_API_KEY='your_api_key'")
-        print("或在代码中直接设置api_key='your_api_key'")
-    
     main()
+def resolve_api_key(default_env_name='DASHSCOPE_API_KEY'):
+    try:
+        print("\n请输入存放 OpenAI API Key 的环境变量名，直接回车使用默认")
+        print(f"默认环境变量名: {default_env_name}")
+        env_name = input("环境变量名: ").strip() or default_env_name
+        api_key = os.getenv(env_name)
+        if not api_key:
+            print("未从环境变量读取到 API Key，请直接输入 OpenAI API Key")
+            api_key = input("OpenAI API Key: ").strip()
+        if not api_key:
+            print("未提供 API Key")
+            return None
+        return api_key
+    except Exception:
+        return None

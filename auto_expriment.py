@@ -34,13 +34,15 @@ REQUIRED_TOTAL_SECONDS = REQUIRED_TOTAL_HOURS * 3600
 
 # 从name_list.txt读取内容到name_list列表
 name_list = []
-file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'name_list.txt')
+# 使用当前目录下的name_list.txt
+current_dir = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(current_dir, 'name_list.txt')
 if os.path.exists(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         name_list = [line.strip() for line in f.readlines()]
-    print(f"成功从{file_path}读取{len(name_list)}行内容到name_list")
+    print(f"成功从当前目录读取{len(name_list)}行内容到name_list")
 else:
-    print(f"警告：未找到{file_path}文件")
+    print(f"警告：未找到当前目录下的name_list.txt文件")
 
 # 打开浏览器
 page = ChromiumPage()

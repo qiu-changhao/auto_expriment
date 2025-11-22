@@ -3,6 +3,8 @@ from DrissionPage import ChromiumPage
 from pprint import pprint
 import json
 import os
+import re
+from urllib.parse import urlparse, parse_qs
 
 
 def extract_options(subject_items):
@@ -43,7 +45,16 @@ def extract_options(subject_items):
     return options
 
 
-def main():
+def _api_from_url(exam_url):
+    pr = urlparse(exam_url)
+    m = re.search(r'/routine-exam/(\d+)', pr.path)
+    exam_id = m.group(1) if m else ''
+    exam_req = parse_qs(pr.query).get('examRequestId', [''])[0]
+    base = f'{pr.scheme}://{pr.netloc}'
+    return f'{base}/cg-exam-server/api/exam_center/do_exam?examRequestId={exam_req}&examId={exam_id}&nocache'
+
+
+def main(exam_url=None):
     """
     主函数，用于提取试卷题目和选项
     """
@@ -55,12 +66,10 @@ def main():
     }
 
     try:
-        # 打开浏览器
         page = ChromiumPage()
-        # 监听数据包
-        page.listen.start('https://sysaq.ustc.edu.cn/cg-exam-server/api/exam_center/do_exam?examRequestId=767307a43b05497087af4c5669052cb9&examId=5&nocache')
-        # 打开第一页
-        page.get('https://sysaq.ustc.edu.cn/lab-study-front/routine-exam/5?examRequestId=7815e28c3b874f989cbe9dd1af0a5f4c')
+        api_url = _api_from_url(exam_url)
+        page.listen.start(api_url)
+        page.get(exam_url)
         # 等待数据包加载完成
         rep = page.listen.wait()
         
@@ -137,8 +146,8 @@ def main():
 
 
 if __name__ == "__main__":
-    # 执行主函数
-    exam_data = main()
+    exam_url = input("请输入考试页面的URL: ")
+    exam_data = main(exam_url)
     
     if exam_data:
         # 打印提取的判断题
